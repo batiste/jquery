@@ -53,9 +53,12 @@ jQuery.fn.extend({
 	},
 
 	hasClass: function( selector ) {
-		var className = new RegExp("\\s" + selector + "\\s", "g");
+		var searchTerm = " " + selector + " ";
 		for ( var i = 0, l = this.length; i < l; i++ ) {
-			if ( (" " + this[i].className + " ").search( className ) > -1 ) {
+			var className = " " + this[i].className + " ";
+			className = className.replace("\n", " ");
+			className = className.replace("\t", " ");
+			if ( className.indexOf( searchTerm ) > -1 ) {
 				return true;
 			}
 		}
