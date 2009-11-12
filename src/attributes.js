@@ -53,14 +53,12 @@ jQuery.fn.extend({
 	},
 
 	hasClass: function( selector ) {
-		var className = " " + selector + " ";
+		var className = new RegExp("\\s" + selector + "\\s", "g");
 		for ( var i = 0, l = this.length; i < l; i++ ) {
-			if ( (" " + this[i].className + " ").indexOf( className ) > -1 ) {
-				return true;
+		if ( (" " + this[i].className + " ").search( className ) > -1 ) {
+			return true;
 			}
 		}
-
-		return false;
 	},
 
 	val: function( value ) {
