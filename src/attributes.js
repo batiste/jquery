@@ -59,8 +59,7 @@ jQuery.fn.extend({
 			// according to the HTML W3C documentation
 			// carriage return and tab should be replaced with a single space
 			// http://www.w3.org/TR/html401/types.html#type-cdata
-			className = className.replace("\n", " ");
-			className = className.replace("\t", " ");
+			className = className.replace(/[\n\t]/g, " ");
 			if ( className.indexOf( searchTerm ) > -1 ) {
 				return true;
 			}
