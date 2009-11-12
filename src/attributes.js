@@ -56,6 +56,9 @@ jQuery.fn.extend({
 		var searchTerm = " " + selector + " ";
 		for ( var i = 0, l = this.length; i < l; i++ ) {
 			var className = " " + this[i].className + " ";
+			// according to the HTML W3C documentation
+			// carriage return and tab should be replaced with a single space
+			// http://www.w3.org/TR/html401/types.html#type-cdata
 			className = className.replace("\n", " ");
 			className = className.replace("\t", " ");
 			if ( className.indexOf( searchTerm ) > -1 ) {
