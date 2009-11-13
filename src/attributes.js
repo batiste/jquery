@@ -31,13 +31,12 @@ jQuery.fn.extend({
 	removeClass: function( value ) {
 		if ( (value && typeof value === "string") || value === undefined ) {
 			var classNames = (value || "").split(/\s+/);
-
 			for ( var i = 0, l = this.length; i < l; i++ ) {
 				var elem = this[i];
-
 				if ( elem.nodeType === 1 && elem.className ) {
 					if ( value ) {
-					var className = " " + elem.className + " ";
+						var className = " " + elem.className + " ";
+						className = className.replace(/[\n\t]/g, " ");
 						for ( var c = 0, cl = classNames.length; c < cl; c++ ) {
 							className = className.replace(" " + classNames[c] + " ", " ");
 						}
@@ -48,7 +47,6 @@ jQuery.fn.extend({
 				}
 			}
 		}
-
 		return this;
 	},
 
