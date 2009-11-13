@@ -400,7 +400,7 @@ test("removeAttr(String", function() {
 });
 
 test("addClass, removeClass, hasClass", function() {
-	expect(9);
+	expect(10);
 
 	var jq = jQuery("<p>Hi</p>"), x = jq[0];
 
@@ -424,4 +424,7 @@ test("addClass, removeClass, hasClass", function() {
 	ok( jq.hasClass("class1"), "Check hasClass with carriage return" );
 	ok( jq.hasClass("class2"), "Check hasClass with tab" );
 	ok( jq.hasClass("cla.ss3"), "Check hasClass with dot" );
+
+	jq.removeClass("class2");
+	ok( jq.hasClass("class2")==false, "Check the class has been properly removed" );
 });
