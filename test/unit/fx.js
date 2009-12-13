@@ -1,12 +1,18 @@
 module("fx");
 
 test("show()", function() {
-	expect(15);
+	expect(16);
 	var pass = true, div = jQuery("#main div");
 	div.show().each(function(){
 		if ( this.style.display == "none" ) pass = false;
 	});
 	ok( pass, "Show" );
+
+	pass = true;
+	div.hide().show(null).each(function() {
+		if ( this.style.display == "none" ) pass = false;
+	});
+	ok( pass, "Show will null speed");
 
 	jQuery("#main").append('<div id="show-tests"><div><p><a href="#"></a></p><code></code><pre></pre><span></span></div><table><thead><tr><th></th></tr></thead><tbody><tr><td></td></tr></tbody></table><ul><li></li></ul></div>');
 
@@ -35,6 +41,43 @@ test("show()", function() {
 	});
 });
 
+test("show(Number) - other displays", function() {
+	expect(15);
+	reset();
+	stop();
+
+	jQuery("#main").append('<div id="show-tests"><div><p><a href="#"></a></p><code></code><pre></pre><span></span></div><table><thead><tr><th></th></tr></thead><tbody><tr><td></td></tr></tbody></table><ul><li></li></ul></div>');
+
+	var old = jQuery("#show-tests table").show().css("display") !== "table",
+		num = 0;
+
+	var test = {
+		"div"      : "block",
+		"p"        : "block",
+		"a"        : "inline",
+		"code"     : "inline",
+		"pre"      : "block",
+		"span"     : "inline",
+		"table"    : old ? "block" : "table",
+		"thead"    : old ? "block" : "table-header-group",
+		"tbody"    : old ? "block" : "table-row-group",
+		"tr"       : old ? "block" : "table-row",
+		"th"       : old ? "block" : "table-cell",
+		"td"       : old ? "block" : "table-cell",
+		"ul"       : "block",
+		"li"       : old ? "block" : "list-item"
+	};
+
+	jQuery.each(test, function(selector, expected) {
+		var elem = jQuery(selector, "#show-tests").show(1, function() {
+			equals( elem.css("display"), expected, "Show using correct display type for " + selector );
+			if ( ++num === 15 ) {
+				start();
+			}
+		});
+	});
+});
+
 test("animate(Hash, Object, Function)", function() {
 	expect(1);
 	stop();
@@ -42,6 +85,15 @@ test("animate(Hash, Object, Function)", function() {
 	var hashCopy = jQuery.extend({}, hash);
 	jQuery('#foo').animate(hash, 0, function() {
 		equals( hash.opacity, hashCopy.opacity, 'Check if animate changed the hash parameter' );
+		start();
+	});
+});
+
+test("animate negative height", function() {
+	expect(1);
+	stop();
+	jQuery("#foo").animate({ height: -100 }, 100, function() {
+		equals( this.offsetHeight, 0, "Verify height." );
 		start();
 	});
 });
@@ -80,32 +132,37 @@ test("animate with no properties", function() {
 });
 
 test("animate duration 0", function() {
-	expect(7);
+	expect(11);
 	
 	stop();
 	
-	var $elems = jQuery([{ a:0 },{ a:0 }]),
-		counter = 0,
-		count = function(){
-			counter++;
-		};
+	var $elems = jQuery([{ a:0 },{ a:0 }]), counter = 0;
 	
 	equals( jQuery.timers.length, 0, "Make sure no animation was running from another test" );
 		
-	$elems.eq(0).animate( {a:1}, 0, count );
+	$elems.eq(0).animate( {a:1}, 0, function(){
+		ok( true, "Animate a simple property." );
+		counter++;
+	});
 	
 	// Failed until [6115]
 	equals( jQuery.timers.length, 0, "Make sure synchronic animations are not left on jQuery.timers" );
 	
 	equals( counter, 1, "One synchronic animations" );
 	
-	$elems.animate( { a:2 }, 0, count );
+	$elems.animate( { a:2 }, 0, function(){
+		ok( true, "Animate a second simple property." );
+		counter++;
+	});
 	
 	equals( counter, 3, "Multiple synchronic animations" );
 	
-	$elems.eq(0).animate( {a:3}, 0, count );
-	$elems.eq(1).animate( {a:3}, 20, function(){
-		count();
+	$elems.eq(0).animate( {a:3}, 0, function(){
+		ok( true, "Animate a third simple property." );
+		counter++;
+	});
+	$elems.eq(1).animate( {a:3}, 200, function(){
+		counter++;
 		// Failed until [6115]
 		equals( counter, 5, "One synchronic and one asynchronic" );
 		start();
@@ -113,10 +170,10 @@ test("animate duration 0", function() {
 	
 	var $elem = jQuery("<div />");
 	$elem.show(0, function(){ 
-		ok(true, "Show's callback with no duration");
+		ok(true, "Show callback with no duration");
 	});
 	$elem.hide(0, function(){ 
-		ok(true, "Show's callback with no duration");
+		ok(true, "Hide callback with no duration");
 	});
 });
 
@@ -514,3 +571,52 @@ jQuery.makeTest = function( text ){
 }
 
 jQuery.makeTest.id = 1;
+
+test("jQuery.show('fast') doesn't clear radio buttons (bug #1095)", function () {
+	expect(4);
+  stop();
+
+	var $checkedtest = jQuery("#checkedtest");
+	// IE6 was clearing "checked" in jQuery(elem).show("fast");
+	$checkedtest.hide().show("fast", function() {
+  	ok( !! jQuery(":radio:first", $checkedtest).attr("checked"), "Check first radio still checked." );
+  	ok( ! jQuery(":radio:last", $checkedtest).attr("checked"), "Check last radio still NOT checked." );
+  	ok( !! jQuery(":checkbox:first", $checkedtest).attr("checked"), "Check first checkbox still checked." );
+  	ok( ! jQuery(":checkbox:last", $checkedtest).attr("checked"), "Check last checkbox still NOT checked." );
+  	start();
+	});
+});
+
+test("animate with per-property easing", function(){
+	
+	expect(3);
+	stop();
+	
+	var _test1_called = false;
+	var _test2_called = false;
+	var _default_test_called = false;
+	
+	jQuery.easing['_test1'] = function() {
+		_test1_called = true;
+	};
+	
+	jQuery.easing['_test2'] = function() {
+		_test2_called = true;
+	};
+	
+	jQuery.easing['_default_test'] = function() {
+		_default_test_called = true;
+	};
+	
+	jQuery({a:0,b:0,c:0}).animate({
+		a: [100, '_test1'],
+		b: [100, '_test2'],
+		c: 100
+	}, 400, '_default_test', function(){
+		start();
+		ok(_test1_called, "Easing function (1) called");
+		ok(_test2_called, "Easing function (2) called");
+		ok(_default_test_called, "Easing function (_default) called");
+	});
+	
+});

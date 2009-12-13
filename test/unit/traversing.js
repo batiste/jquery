@@ -1,15 +1,5 @@
 module("traversing");
 
-test("end()", function() {
-	expect(3);
-	equals( 'Yahoo', jQuery('#yahoo').parent().end().text(), 'Check for end' );
-	ok( jQuery('#yahoo').end(), 'Check for end with nothing to end' );
-
-	var x = jQuery('#yahoo');
-	x.parent();
-	equals( 'Yahoo', jQuery('#yahoo').text(), 'Check for non-destructive behaviour' );
-});
-
 test("find(String)", function() {
 	expect(2);
 	equals( 'Yahoo', jQuery('#foo').find('.blogTest').text(), 'Check for find' );
@@ -51,6 +41,43 @@ test("is(String)", function() {
 	ok( jQuery('#en').is('[lang="de"] , [lang="en"]'), 'Comma-seperated; Check for lang attribute: Expect en or de' );
 });
 
+test("index()", function() {
+	expect(1);
+
+	equals( jQuery("#text2").index(), 2, "Returns the index of a child amongst its siblings" )
+});
+
+test("index(Object|String|undefined)", function() {
+	expect(16);
+
+	var elements = jQuery([window, document]),
+		inputElements = jQuery('#radio1,#radio2,#check1,#check2');
+
+	// Passing a node
+	equals( elements.index(window), 0, "Check for index of elements" );
+	equals( elements.index(document), 1, "Check for index of elements" );
+	equals( inputElements.index(document.getElementById('radio1')), 0, "Check for index of elements" );
+	equals( inputElements.index(document.getElementById('radio2')), 1, "Check for index of elements" );
+	equals( inputElements.index(document.getElementById('check1')), 2, "Check for index of elements" );
+	equals( inputElements.index(document.getElementById('check2')), 3, "Check for index of elements" );
+	equals( inputElements.index(window), -1, "Check for not found index" );
+	equals( inputElements.index(document), -1, "Check for not found index" );
+
+	// Passing a jQuery object
+	// enabled since [5500]
+	equals( elements.index( elements ), 0, "Pass in a jQuery object" );
+	equals( elements.index( elements.eq(1) ), 1, "Pass in a jQuery object" );
+	equals( jQuery("#form :radio").index( jQuery("#radio2") ), 1, "Pass in a jQuery object" );
+
+	// Passing a selector or nothing
+	// enabled since [6330]
+	equals( jQuery('#text2').index(), 2, "Check for index amongst siblings" );
+	equals( jQuery('#form').children().eq(4).index(), 4, "Check for index amongst siblings" );
+	equals( jQuery('#radio2').index('#form :radio') , 1, "Check for index within a selector" );
+	equals( jQuery('#form :radio').index( jQuery('#radio2') ), 1, "Check for index within a selector" );
+	equals( jQuery('#radio2').index('#form :text') , -1, "Check for index not found within a selector" );
+});
+
 test("filter(Selector)", function() {
 	expect(5);
 	same( jQuery("#form input").filter(":checked").get(), q("radio2", "check1"), "filter(String)" );
@@ -64,9 +91,11 @@ test("filter(Selector)", function() {
 });
 
 test("filter(Function)", function() {
-	expect(1);
+	expect(2);
 
 	same( jQuery("p").filter(function() { return !jQuery("a", this).length }).get(), q("sndp", "first"), "filter(Function)" );
+
+	same( jQuery("p").filter(function(i, elem) { return !jQuery("a", elem).length }).get(), q("sndp", "first"), "filter(Function) using arg" );
 });
 
 test("filter(Element)", function() {
@@ -107,6 +136,17 @@ test("closest()", function() {
 	same( jq.closest("#nothiddendiv", document.body).get(), q("nothiddendiv"), "Context not reached." );
 });
 
+test("closest(Array)", function() {
+	expect(6);
+	same( jQuery("body").closest(["body"]), [{selector:"body", elem:document.body}], "closest([body])" );
+	same( jQuery("body").closest(["html"]), [{selector:"html", elem:document.documentElement}], "closest([html])" );
+	same( jQuery("body").closest(["div"]), [], "closest([div])" );
+	same( jQuery("#main").closest(["span,#html"]), [{selector:"span,#html", elem:document.documentElement}], "closest([span,#html])" );
+
+	same( jQuery("body").closest(["body","html"]), [{selector:"body", elem:document.body}, {selector:"html", elem:document.documentElement}], "closest([body, html])" );
+	same( jQuery("body").closest(["span","html"]), [{selector:"html", elem:document.documentElement}], "closest([body, html])" );
+});
+
 test("not(Selector)", function() {
 	expect(7);
 	equals( jQuery("#main > p#ap > a").not("#google").length, 2, "not('selector')" );
@@ -141,7 +181,43 @@ test("not(jQuery)", function() {
 	expect(1);
 
 	same( jQuery("p").not(jQuery("#ap, #sndp, .result")).get(), q("firstp", "en", "sap", "first"), "not(jQuery)" );
-})
+});
+
+test("has(Element)", function() {
+	expect(2);
+
+	var obj = jQuery("#main").has(jQuery("#sndp")[0]);
+	same( obj.get(), q("main"), "Keeps elements that have the element as a descendant" );
+
+	var multipleParent = jQuery("#main, #header").has(jQuery("#sndp")[0]);
+	same( obj.get(), q("main"), "Does not include elements that do not have the element as a descendant" );
+});
+
+test("has(Selector)", function() {
+	expect(3);
+
+	var obj = jQuery("#main").has("#sndp");
+	same( obj.get(), q("main"), "Keeps elements that have any element matching the selector as a descendant" );
+
+	var multipleParent = jQuery("#main, #header").has("#sndp");
+	same( obj.get(), q("main"), "Does not include elements that do not have the element as a descendant" );
+
+	var multipleHas = jQuery("#main").has("#sndp, #first");
+	same( multipleHas.get(), q("main"), "Only adds elements once" );
+});
+
+test("has(Arrayish)", function() {
+	expect(3);
+
+	var simple = jQuery("#main").has(jQuery("#sndp"));
+	same( simple.get(), q("main"), "Keeps elements that have any element in the jQuery list as a descendant" );
+
+	var multipleParent = jQuery("#main, #header").has(jQuery("#sndp"));
+	same( multipleParent.get(), q("main"), "Does not include elements that do not have an element in the jQuery list as a descendant" );
+
+	var multipleHas = jQuery("#main").has(jQuery("#sndp, #first"));
+	same( simple.get(), q("main"), "Only adds elements once" );
+});
 
 test("andSelf()", function() {
 	expect(4);
@@ -182,8 +258,24 @@ test("parents([String])", function() {
 	equals( jQuery("#groups").parents()[0].id, "ap", "Simple parents check" );
 	equals( jQuery("#groups").parents("p")[0].id, "ap", "Filtered parents check" );
 	equals( jQuery("#groups").parents("div")[0].id, "main", "Filtered parents check2" );
-	same( jQuery("#groups").parents("p, div").get(), q("main", "ap"), "Check for multiple filters" );
+	same( jQuery("#groups").parents("p, div").get(), q("ap", "main"), "Check for multiple filters" );
 	same( jQuery("#en, #sndp").parents().get(), q("foo", "main", "dl", "body", "html"), "Check for unique results from parents" );
+});
+
+test("parentsUntil([String])", function() {
+	expect(9);
+	
+	var parents = jQuery("#groups").parents();
+	
+	same( jQuery("#groups").parentsUntil().get(), parents.get(), "parentsUntil with no selector (nextAll)" );
+	same( jQuery("#groups").parentsUntil(".foo").get(), parents.get(), "parentsUntil with invalid selector (nextAll)" );
+	same( jQuery("#groups").parentsUntil("#html").get(), parents.not(':last').get(), "Simple parentsUntil check" );
+	equals( jQuery("#groups").parentsUntil("#ap").length, 0, "Simple parentsUntil check" );
+	same( jQuery("#groups").parentsUntil("#html, #body").get(), parents.slice( 0, 3 ).get(), "Less simple parentsUntil check" );
+	same( jQuery("#groups").parentsUntil("#html", "div").get(), jQuery("#main").get(), "Filtered parentsUntil check" );
+	same( jQuery("#groups").parentsUntil("#html", "p,div,dl").get(), parents.slice( 0, 3 ).get(), "Multiple-filtered parentsUntil check" );
+	equals( jQuery("#groups").parentsUntil("#html", "span").length, 0, "Filtered parentsUntil check, no match" );
+	same( jQuery("#groups, #ap").parentsUntil("#html", "p,div,dl").get(), parents.slice( 0, 3 ).get(), "Multi-source, multiple-filtered parentsUntil check" );
 });
 
 test("next([String])", function() {
@@ -202,79 +294,60 @@ test("prev([String])", function() {
 	equals( jQuery("#foo").prev("p, div")[0].id, "ap", "Multiple filters" );
 });
 
-test("slice()", function() {
-	expect(7);
-
-	var $links = jQuery("#ap a");
-
-	same( $links.slice(1,2).get(), q("groups"), "slice(1,2)" );
-	same( $links.slice(1).get(), q("groups", "anchor1", "mark"), "slice(1)" );
-	same( $links.slice(0,3).get(), q("google", "groups", "anchor1"), "slice(0,3)" );
-	same( $links.slice(-1).get(), q("mark"), "slice(-1)" );
-
-	same( $links.eq(1).get(), q("groups"), "eq(1)" );
-	same( $links.eq('2').get(), q("anchor1"), "eq('2')" );
-	same( $links.eq(-1).get(), q("mark"), "eq(-1)" );
-});
-
-test("first()/last()", function() {
+test("nextAll([String])", function() {
 	expect(4);
-
-	var $links = jQuery("#ap a"), $none = jQuery("asdf");
-
-	same( $links.first().get(), q("google"), "first()" );
-	same( $links.last().get(), q("mark"), "last()" );
-
-	same( $none.first().get(), [], "first() none" );
-	same( $none.last().get(), [], "last() none" );
+	
+	var elems = jQuery('#form').children();
+	
+	same( jQuery("#label-for").nextAll().get(), elems.not(':first').get(), "Simple nextAll check" );
+	same( jQuery("#label-for").nextAll('input').get(), elems.not(':first').filter('input').get(), "Filtered nextAll check" );
+	same( jQuery("#label-for").nextAll('input,select').get(), elems.not(':first').filter('input,select').get(), "Multiple-filtered nextAll check" );
+	same( jQuery("#label-for, #hidden1").nextAll('input,select').get(), elems.not(':first').filter('input,select').get(), "Multi-source, multiple-filtered nextAll check" );
 });
 
-test("map()", function() {
-	expect(2);//expect(6);
+test("prevAll([String])", function() {
+	expect(4);
+	
+	var elems = jQuery( jQuery('#form').children().slice(0, 12).get().reverse() );
+	
+	same( jQuery("#area1").prevAll().get(), elems.get(), "Simple prevAll check" );
+	same( jQuery("#area1").prevAll('input').get(), elems.filter('input').get(), "Filtered prevAll check" );
+	same( jQuery("#area1").prevAll('input,select').get(), elems.filter('input,select').get(), "Multiple-filtered prevAll check" );
+	same( jQuery("#area1, #hidden1").prevAll('input,select').get(), elems.filter('input,select').get(), "Multi-source, multiple-filtered prevAll check" );
+});
 
-	same(
-		jQuery("#ap").map(function(){
-			return jQuery(this).find("a").get();
-		}).get(),
-		q("google", "groups", "anchor1", "mark"),
-		"Array Map"
-	);
+test("nextUntil([String])", function() {
+	expect(10);
+	
+	var elems = jQuery('#form').children().slice( 2, 12 );
+	
+	same( jQuery("#text1").nextUntil().get(), jQuery("#text1").nextAll().get(), "nextUntil with no selector (nextAll)" );
+	same( jQuery("#text1").nextUntil(".foo").get(), jQuery("#text1").nextAll().get(), "nextUntil with invalid selector (nextAll)" );
+	same( jQuery("#text1").nextUntil("#area1").get(), elems.get(), "Simple nextUntil check" );
+	equals( jQuery("#text1").nextUntil("#text2").length, 0, "Simple nextUntil check" );
+	same( jQuery("#text1").nextUntil("#area1, #radio1").get(), jQuery("#text1").next().get(), "Less simple nextUntil check" );
+	same( jQuery("#text1").nextUntil("#area1", "input").get(), elems.not("button").get(), "Filtered nextUntil check" );
+	same( jQuery("#text1").nextUntil("#area1", "button").get(), elems.not("input").get(), "Filtered nextUntil check" );
+	same( jQuery("#text1").nextUntil("#area1", "button,input").get(), elems.get(), "Multiple-filtered nextUntil check" );
+	equals( jQuery("#text1").nextUntil("#area1", "div").length, 0, "Filtered nextUntil check, no match" );
+	same( jQuery("#text1, #hidden1").nextUntil("#area1", "button,input").get(), elems.get(), "Multi-source, multiple-filtered nextUntil check" );
+});
 
-	same(
-		jQuery("#ap > a").map(function(){
-			return this.parentNode;
-		}).get(),
-		q("ap","ap","ap"),
-		"Single Map"
-	);
-
-	return;//these haven't been accepted yet
-
-	//for #2616
-	var keys = jQuery.map( {a:1,b:2}, function( v, k ){
-		return k;
-	}, [ ] );
-
-	equals( keys.join(""), "ab", "Map the keys from a hash to an array" );
-
-	var values = jQuery.map( {a:1,b:2}, function( v, k ){
-		return v;
-	}, [ ] );
-
-	equals( values.join(""), "12", "Map the values from a hash to an array" );
-
-	var scripts = document.getElementsByTagName("script");
-	var mapped = jQuery.map( scripts, function( v, k ){
-		return v;
-	}, {length:0} );
-
-	equals( mapped.length, scripts.length, "Map an array(-like) to a hash" );
-
-	var flat = jQuery.map( Array(4), function( v, k ){
-		return k % 2 ? k : [k,k,k];//try mixing array and regular returns
-	});
-
-	equals( flat.join(""), "00012223", "try the new flatten technique(#2616)" );
+test("prevUntil([String])", function() {
+	expect(10);
+	
+	var elems = jQuery("#area1").prevAll();
+	
+	same( jQuery("#area1").prevUntil().get(), elems.get(), "prevUntil with no selector (prevAll)" );
+	same( jQuery("#area1").prevUntil(".foo").get(), elems.get(), "prevUntil with invalid selector (prevAll)" );
+	same( jQuery("#area1").prevUntil("label").get(), elems.not(':last').get(), "Simple prevUntil check" );
+	equals( jQuery("#area1").prevUntil("#button").length, 0, "Simple prevUntil check" );
+	same( jQuery("#area1").prevUntil("label, #search").get(), jQuery("#area1").prev().get(), "Less simple prevUntil check" );
+	same( jQuery("#area1").prevUntil("label", "input").get(), elems.not(':last').not("button").get(), "Filtered prevUntil check" );
+	same( jQuery("#area1").prevUntil("label", "button").get(), elems.not(':last').not("input").get(), "Filtered prevUntil check" );
+	same( jQuery("#area1").prevUntil("label", "button,input").get(), elems.not(':last').get(), "Multiple-filtered prevUntil check" );
+	equals( jQuery("#area1").prevUntil("label", "div").length, 0, "Filtered prevUntil check, no match" );
+	same( jQuery("#area1, #hidden1").prevUntil("label", "button,input").get(), elems.not(':last').get(), "Multi-source, multiple-filtered prevUntil check" );
 });
 
 test("contents()", function() {

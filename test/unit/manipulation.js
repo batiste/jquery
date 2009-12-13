@@ -4,13 +4,16 @@ var bareObj = function(value) { return value; };
 var functionReturningObj = function(value) { return (function() { return value; }); };
 
 test("text()", function() {
-	expect(1);
+	expect(2);
 	var expected = "This link has class=\"blog\": Simon Willison's Weblog";
 	equals( jQuery('#sap').text(), expected, 'Check for merged text of more then one element.' );
+
+	// Check serialization of text values
+	equals( jQuery(document.createTextNode("foo")).text(), "foo", "Text node was retreived from .text()." );
 });
 
 var testWrap = function(val) {
-	expect(15);
+	expect(18);
 	var defaultText = 'Try them out:'
 	var result = jQuery('#first').wrap(val( '<div class="red"><span></span></div>' )).text();
 	equals( defaultText, result, 'Check for wrapping of on-the-fly html' );
@@ -34,7 +37,7 @@ var testWrap = function(val) {
 	var j = jQuery("#nonnodes").contents();
 	j.wrap(val( "<i></i>" ));
 	equals( jQuery("#nonnodes > i").length, 3, "Check node,textnode,comment wraps ok" );
-	equals( jQuery("#nonnodes > i").text(), j.text() + j[1].nodeValue, "Check node,textnode,comment wraps doesn't hurt text" );
+	equals( jQuery("#nonnodes > i").text(), j.text(), "Check node,textnode,comment wraps doesn't hurt text" );
 
 	// Try wrapping a disconnected node
 	j = jQuery("<label/>").wrap(val( "<li/>" ));
@@ -51,6 +54,20 @@ var testWrap = function(val) {
 	equals( j[0].parentNode.parentNode.childNodes.length, 1, "There should only be one element wrapping." );
 	equals( j.length, 1, "There should only be one element (no cloning)." );
 	equals( j[0].parentNode.nodeName.toUpperCase(), "P", "The span should be in the paragraph." );
+
+	// Wrap an element with a jQuery set
+	j = jQuery("<span/>").wrap(jQuery("<div></div>"));
+	equals( j[0].parentNode.nodeName.toLowerCase(), "div", "Wrapping works." );
+
+	// Wrap an element with a jQuery set and event
+	result = jQuery("<div></div>").click(function(){
+		ok(true, "Event triggered.");
+	});
+
+	j = jQuery("<span/>").wrap(result);
+	equals( j[0].parentNode.nodeName.toLowerCase(), "div", "Wrapping works." );
+
+	j.parent().trigger("click");
 }
 
 test("wrap(String|Element)", function() {
@@ -88,7 +105,7 @@ test("wrapAll(String|Element)", function() {
 
 // TODO: Figure out why each(wrapAll) is not equivalent to wrapAll
 // test("wrapAll(Function)", function() {
-// 	testWrapAll(functionReturningObj);
+//	testWrapAll(functionReturningObj);
 // })
 
 var testWrapInner = function(val) {
@@ -113,7 +130,7 @@ test("wrapInner(String|Element)", function() {
 
 // TODO: wrapInner uses wrapAll -- get wrapAll working with Function
 // test("wrapInner(Function)", function() {
-// 	testWrapInner(functionReturningObj)
+//	testWrapInner(functionReturningObj)
 // })
 
 var testUnwrap = function() {
@@ -124,7 +141,7 @@ var testUnwrap = function() {
 	var abcd = jQuery('#unwrap1 > span, #unwrap2 > span').get(),
 		abcdef = jQuery('#unwrap span').get();
 
-	equals( jQuery('#unwrap1 span, #unwrap2 span:first').unwrap().length, 3, 'make #unwrap1 and #unwrap2 go away' );
+	equals( jQuery('#unwrap1 span').add('#unwrap2 span:first').unwrap().length, 3, 'make #unwrap1 and #unwrap2 go away' );
 	same( jQuery('#unwrap > span').get(), abcd, 'all four spans should still exist' );
 
 	same( jQuery('#unwrap3 span').unwrap().get(), jQuery('#unwrap3 > span').get(), 'make all b in #unwrap3 go away' );
@@ -148,7 +165,7 @@ test("unwrap()", function() {
 });
 
 var testAppend = function(valueObj) {
-	expect(21);
+	expect(22);
 	var defaultText = 'Try them out:'
 	var result = jQuery('#first').append(valueObj('<b>buga</b>'));
 	equals( result.text(), defaultText + 'buga', 'Check if text appending works' );
@@ -221,6 +238,8 @@ var testAppend = function(valueObj) {
 
 	t( "Append Select", "#appendSelect1, #appendSelect2", ["appendSelect1", "appendSelect2"] );
 
+	equals( "Two nodes", jQuery('<div />').append("Two", " nodes").text(), "Appending two text nodes (#4011)" );
+
 	// using contents will get comments regular, text, and comment nodes
 	var j = jQuery("#nonnodes").contents();
 	var d = jQuery("<div/>").appendTo("#nonnodes").append(j);
@@ -232,7 +251,7 @@ var testAppend = function(valueObj) {
 }
 
 test("append(String|Element|Array&lt;Element&gt;|jQuery)", function() {
-  testAppend(bareObj);
+	testAppend(bareObj);
 });
 
 test("append(Function)", function() {
@@ -463,7 +482,7 @@ test("insertAfter(String|Element|Array&lt;Element&gt;|jQuery)", function() {
 });
 
 var testReplaceWith = function(val) {
-	expect(12);
+	expect(14);
 	jQuery('#yahoo').replaceWith(val( '<b id="replace">buga</b>' ));
 	ok( jQuery("#replace")[0], 'Replace element with string' );
 	ok( !jQuery("#yahoo")[0], 'Verify that original element is gone, after string' );
@@ -488,6 +507,13 @@ var testReplaceWith = function(val) {
 	var set = jQuery("<div/>").replaceWith(val("<span>test</span>"));
 	equals( set[0].nodeName.toLowerCase(), "span", "Replace the disconnected node." );
 	equals( set.length, 1, "Replace the disconnected node." );
+
+	var $div = jQuery("<div class='replacewith'></div>").appendTo("body");
+	$div.replaceWith("<div class='replacewith'></div><script>" +
+		"equals(jQuery('.replacewith').length, 1, 'Check number of elements in page.');" +
+		"</script>");
+	equals(jQuery('.replacewith').length, 1, 'Check number of elements in page.');
+	jQuery('.replacewith').remove();
 }
 
 test("replaceWith(String|Element|Array&lt;Element&gt;|jQuery)", function() {
@@ -523,7 +549,7 @@ test("replaceAll(String|Element|Array&lt;Element&gt;|jQuery)", function() {
 });
 
 test("clone()", function() {
-	expect(28);
+	expect(30);
 	equals( 'This is a normal link: Yahoo', jQuery('#en').text(), 'Assert text for #en' );
 	var clone = jQuery('#yahoo').clone();
 	equals( 'Try them out:Yahoo', jQuery('#first').append(clone).text(), 'Check for clone' );
@@ -568,6 +594,11 @@ test("clone()", function() {
 	div = div.clone(true);
 	equals( div.length, 1, "One element cloned" );
 	equals( div[0].nodeName.toUpperCase(), "DIV", "DIV element cloned" );
+
+	div = jQuery("<div/>").data({ a: true, b: true });
+	div = div.clone(true);
+	equals( div.data("a"), true, "Data cloned." );
+	equals( div.data("b"), true, "Data cloned." );
 });
 
 if (!isLocal) {
@@ -613,7 +644,7 @@ test("val()", function() {
 });
 
 var testVal = function(valueObj) {
-	expect(5);
+	expect(6);
 
 	jQuery("#text1").val(valueObj( 'test' ));
 	equals( document.getElementById('text1').value, "test", "Check for modified (via val(String)) value of input element" );
@@ -626,6 +657,10 @@ var testVal = function(valueObj) {
 
 	jQuery("#select1").val(valueObj( 2 ));
 	equals( jQuery("#select1").val(), "2", "Check for modified (via val(Number)) value of select element" );
+
+	jQuery("#select1").append("<option value='4'>four</option>");
+	jQuery("#select1").val(valueObj( 4 ));
+	equals( jQuery("#select1").val(), "4", "Should be possible to set the val() to a newly created option" );
 
 	// using contents will get comments regular, text, and comment nodes
 	var j = jQuery("#nonnodes").contents();
@@ -643,9 +678,7 @@ test("val(Function)", function() {
 })
 
 var testHtml = function(valueObj) {
-	expect(20);
-
-	window.debug = true;
+	expect(22);
 
 	jQuery.scriptorder = 0;
 
@@ -656,8 +689,6 @@ var testHtml = function(valueObj) {
 		if ( div.get(i).childNodes.length != 1 ) pass = false;
 	}
 	ok( pass, "Set HTML" );
-
-	delete window.debug;
 
 	reset();
 	// using contents will get comments regular, text, and comment nodes
@@ -681,6 +712,10 @@ var testHtml = function(valueObj) {
 	equals( $div2.html("x" + insert).html(), "x" + insert, "Verify escaped insertion." );
 	equals( $div2.html(" " + insert).html(), " " + insert, "Verify escaped insertion." );
 
+	var map = jQuery("<map/>").html(valueObj("<area id='map01' shape='rect' coords='50,50,150,150' href='http://www.jquery.com/' alt='jQuery'>"));
+
+	equals( map[0].childNodes.length, 1, "The area was inserted." );
+	equals( map[0].firstChild.nodeName.toLowerCase(), "area", "The area was inserted." );
 
 	reset();
 
@@ -704,15 +739,16 @@ test("html(String)", function() {
 
 test("html(Function)", function() {
 	testHtml(functionReturningObj);
-})
+});
 
 var testText = function(valueObj) {
 	expect(4);
-	equals( jQuery("#foo").text("<div><b>Hello</b> cruel world!</div>")[0].innerHTML.replace(/>/g, "&gt;"), "&lt;div&gt;&lt;b&gt;Hello&lt;/b&gt; cruel world!&lt;/div&gt;", "Check escaped text" );
+	var val = valueObj("<div><b>Hello</b> cruel world!</div>");
+	equals( jQuery("#foo").text(val)[0].innerHTML.replace(/>/g, "&gt;"), "&lt;div&gt;&lt;b&gt;Hello&lt;/b&gt; cruel world!&lt;/div&gt;", "Check escaped text" );
 
 	// using contents will get comments regular, text, and comment nodes
 	var j = jQuery("#nonnodes").contents();
-	j.text("hi!");
+	j.text(valueObj("hi!"));
 	equals( jQuery(j[0]).text(), "hi!", "Check node,textnode,comment with text()" );
 	equals( j[1].nodeValue, " there ", "Check node,textnode,comment with text()" );
 	equals( j[2].nodeType, 8, "Check node,textnode,comment with text()" );

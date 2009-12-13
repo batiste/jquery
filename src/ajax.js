@@ -195,10 +195,8 @@ jQuery.extend({
 	lastModified: {},
 	etag: {},
 
-	ajax: function( s ) {
-		// Extend the settings, but re-extend 's' so that it can be
-		// checked again later (in the test suite, specifically)
-		s = jQuery.extend(true, {}, jQuery.ajaxSettings, s);
+	ajax: function( origSettings ) {
+		var s = jQuery.extend(true, {}, jQuery.ajaxSettings, origSettings);
 		
 		var jsonp, status, data,
 			callbackContext = s.context || window,
@@ -223,7 +221,7 @@ jQuery.extend({
 
 		// Build temporary JSONP function
 		if ( s.dataType === "json" && (s.data && jsre.test(s.data) || jsre.test(s.url)) ) {
-			jsonp = "jsonp" + jsc++;
+			jsonp = s.jsonpCallback || ("jsonp" + jsc++);
 
 			// Replace the =? sequence both in the query string and the data
 			if ( s.data ) {
@@ -237,7 +235,7 @@ jQuery.extend({
 			s.dataType = "script";
 
 			// Handle JSONP-style loading
-			window[ jsonp ] = function(tmp){
+			window[ jsonp ] = window[ jsonp ] || function(tmp){
 				data = tmp;
 				success();
 				complete();
@@ -275,13 +273,12 @@ jQuery.extend({
 		}
 
 		// Matches an absolute URL, and saves the domain
-		var parts = rurl.exec( s.url );
+		var parts = rurl.exec( s.url ),
+			remote = parts && (parts[1] && parts[1] !== location.protocol || parts[2] !== location.host);
 
 		// If we're requesting a remote document
 		// and trying to load JSON or Script with a GET
-		if ( s.dataType === "script" && type === "GET" && parts
-			&& ( parts[1] && parts[1] !== location.protocol || parts[2] !== location.host )) {
-
+		if ( s.dataType === "script" && type === "GET" && remote ) {
 			var head = document.getElementsByTagName("head")[0] || document.documentElement;
 			var script = document.createElement("script");
 			script.src = s.url;
@@ -334,23 +331,26 @@ jQuery.extend({
 		// Need an extra try/catch for cross domain requests in Firefox 3
 		try {
 			// Set the correct header, if data is being sent
-			if ( s.data ) {
+			if ( s.data || origSettings && origSettings.contentType ) {
 				xhr.setRequestHeader("Content-Type", s.contentType);
 			}
 
-				// Set the If-Modified-Since and/or If-None-Match header, if in ifModified mode.
-				if ( s.ifModified ) {
-					if ( jQuery.lastModified[s.url] ) {
-						xhr.setRequestHeader("If-Modified-Since", jQuery.lastModified[s.url]);
-					}
-
-					if ( jQuery.etag[s.url] ) {
-						xhr.setRequestHeader("If-None-Match", jQuery.etag[s.url]);
-					}
+			// Set the If-Modified-Since and/or If-None-Match header, if in ifModified mode.
+			if ( s.ifModified ) {
+				if ( jQuery.lastModified[s.url] ) {
+					xhr.setRequestHeader("If-Modified-Since", jQuery.lastModified[s.url]);
 				}
 
+				if ( jQuery.etag[s.url] ) {
+					xhr.setRequestHeader("If-None-Match", jQuery.etag[s.url]);
+				}
+			}
+
 			// Set header so the called script knows that it's an XMLHttpRequest
-			xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+			// Only send the header if it's not a remote XHR
+			if ( !remote ) {
+				xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+			}
 
 			// Set the Accepts header for the server, depending on the dataType
 			xhr.setRequestHeader("Accept", s.dataType && s.accepts[ s.dataType ] ?
@@ -430,7 +430,7 @@ jQuery.extend({
 				// Fire the complete handlers
 				complete();
 
-				if ( isTimeout ) {
+				if ( isTimeout === "timeout" ) {
 					xhr.abort();
 				}
 
@@ -602,19 +602,19 @@ jQuery.extend({
 		
 		// If an array was passed in, assume that it is an array
 		// of form elements
-		if ( jQuery.isArray(a) || a.jquery )
+		if ( jQuery.isArray(a) || a.jquery ) {
 			// Serialize the form elements
 			jQuery.each( a, function() {
 				add( this.name, this.value );
 			});
 			
-		else
+		} else {
 			// Encode parameters from object, recursively. If
 			// jQuery.param.traditional is set, encode the "old" way
 			// (the way 1.3.2 or older did it)
 			jQuery.each( a, function buildParams( prefix, obj ) {
 				
-				if ( jQuery.isArray(obj) )
+				if ( jQuery.isArray(obj) ) {
 					jQuery.each( obj, function(i,v){
 						// Due to rails' limited request param syntax, numeric array
 						// indices are not supported. To avoid serialization ambiguity
@@ -624,20 +624,20 @@ jQuery.extend({
 						add( prefix + ( param_traditional ? "" : "[]" ), v );
 					});
 					
-				else if ( typeof obj == "object" )
-					if ( param_traditional )
+				} else if ( typeof obj == "object" ) {
+					if ( param_traditional ) {
 						add( prefix, obj );
 						
-					else
+					} else {
 						jQuery.each( obj, function(k,v){
 							buildParams( prefix ? prefix + "[" + k + "]" : k, v );
 						});
-					
-				else
+					}
+				} else {
 					add( prefix, obj );
-				
+				}
 			});
-
+		}
 		// Return the resulting serialization
 		return s.join("&").replace(r20, "+");
 	}

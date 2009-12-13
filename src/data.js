@@ -6,7 +6,19 @@ jQuery.extend({
 	
 	expando:expando,
 
+	// The following elements throw uncatchable exceptions if you
+	// attempt to add expando properties to them.
+	noData: {
+		"embed": true,
+		"object": true,
+		"applet": true
+	},
+
 	data: function( elem, name, data ) {
+		if ( elem.nodeName && jQuery.noData[elem.nodeName.toLowerCase()] ) {
+			return;
+		}
+
 		elem = elem == window ?
 			windowData :
 			elem;
@@ -25,24 +37,31 @@ jQuery.extend({
 
 		// Avoid generating a new cache unless none exists and we
 		// want to manipulate it.
-		if ( cache[ id ] ) {
+		if ( typeof name === "object" ) {
+			elem[ expando ] = id;
+			thisCache = cache[ id ] = jQuery.extend(true, {}, name);
+		} else if ( cache[ id ] ) {
 			thisCache = cache[ id ];
 		} else if ( typeof data === "undefined" ) {
 			thisCache = emptyObject;
 		} else {
 			thisCache = cache[ id ] = {};
 		}
-		
+
 		// Prevent overriding the named cache with undefined values
 		if ( data !== undefined ) {
 			elem[ expando ] = id;
 			thisCache[ name ] = data;
 		}
-		
-		return name ? thisCache[ name ] : thisCache;
+
+		return typeof name === "string" ? thisCache[ name ] : thisCache;
 	},
 
 	removeData: function( elem, name ) {
+		if ( elem.nodeName && jQuery.noData[elem.nodeName.toLowerCase()] ) {
+			return;
+		}
+
 		elem = elem == window ?
 			windowData :
 			elem;
@@ -77,40 +96,6 @@ jQuery.extend({
 			// Completely remove the data cache
 			delete cache[ id ];
 		}
-	},
-	
-	queue: function( elem, type, data ) {
-		if( !elem ) return;
-
-		type = (type || "fx") + "queue";
-		var q = jQuery.data( elem, type );
-
-		// Speed up dequeue by getting out quickly if this is just a lookup
-		if( !data ) return q || [];
-
-		if ( !q || jQuery.isArray(data) )
-			q = jQuery.data( elem, type, jQuery.makeArray(data) );
-		else
-			q.push( data );
-
-		return q;
-	},
-
-	dequeue: function( elem, type ){
-		type = type || "fx";
-
-		var queue = jQuery.queue( elem, type ), fn = queue.shift();
-
-		// If the fx queue is dequeued, always remove the progress sentinel
-		if( fn === "inprogress" ) fn = queue.shift();
-
-		if( fn ) {
-			// Add a progress sentinel to prevent the fx queue from being
-			// automatically dequeued
-			if( type == "fx" ) queue.unshift("inprogress");
-
-			fn.call(elem, function() { jQuery.dequeue(elem, type); });
-		}
 	}
 });
 
@@ -118,6 +103,11 @@ jQuery.fn.extend({
 	data: function( key, value ){
 		if ( typeof key === "undefined" && this.length ) {
 			return jQuery.data( this[0] );
+
+		} else if ( typeof key === "object" ) {
+			return this.each(function() {
+				jQuery.data( this, key );
+			});
 		}
 
 		var parts = key.split(".");
@@ -126,45 +116,22 @@ jQuery.fn.extend({
 		if ( value === undefined ) {
 			var data = this.triggerHandler("getData" + parts[1] + "!", [parts[0]]);
 
-			if ( data === undefined && this.length )
+			if ( data === undefined && this.length ) {
 				data = jQuery.data( this[0], key );
-
+			}
 			return data === undefined && parts[1] ?
 				this.data( parts[0] ) :
 				data;
-		} else
+		} else {
 			return this.trigger("setData" + parts[1] + "!", [parts[0], value]).each(function(){
 				jQuery.data( this, key, value );
 			});
+		}
 	},
 
 	removeData: function( key ){
 		return this.each(function(){
 			jQuery.removeData( this, key );
 		});
-	},
-	queue: function(type, data){
-		if ( typeof type !== "string" ) {
-			data = type;
-			type = "fx";
-		}
-
-		if ( data === undefined )
-			return jQuery.queue( this[0], type );
-
-		return this.each(function(i, elem){
-			var queue = jQuery.queue( this, type, data );
-
-			if( type == "fx" && queue[0] !== "inprogress" )
-				jQuery.dequeue( this, type )
-		});
-	},
-	dequeue: function(type){
-		return this.each(function(){
-			jQuery.dequeue( this, type );
-		});
-	},
-	clearQueue: function(type){
-		return this.queue( type || "fx", [] );
 	}
 });

@@ -1,7 +1,7 @@
 module("css");
 
 test("css(String|Hash)", function() {
-	expect(27);
+	expect(28);
 
 	equals( jQuery('#main').css("display"), 'none', 'Check for css property "display"');
 
@@ -47,8 +47,17 @@ test("css(String|Hash)", function() {
 	child.attr("class", "em");
 	equals( parseInt(child.css("fontSize")), 32, "Verify fontSize em set." );
 
+	// Have to verify this as the result depends upon the browser's CSS
+	// support for font-size percentages
 	child.attr("class", "prct");
-	equals( parseInt(child.css("fontSize")), 24, "Verify fontSize % set." );
+	var prctval = parseInt(child.css("fontSize")), checkval = 0;
+	if ( prctval === 16 || prctval === 24 ) {
+		checkval = prctval;
+	}
+
+	equals( prctval, checkval, "Verify fontSize % set." );
+
+	equals( typeof child.css("width"), "string", "Make sure that a string width is returned from css('width')." );
 });
 
 test("css(String, Object)", function() {
@@ -58,6 +67,9 @@ test("css(String, Object)", function() {
 	ok( !jQuery('#nothiddendiv').is(':visible'), 'Modified CSS display: Assert element is hidden');
 	jQuery('#nothiddendiv').css("display", 'block');
 	ok( jQuery('#nothiddendiv').is(':visible'), 'Modified CSS display: Assert element is visible');
+
+	jQuery("#nothiddendiv").css("top", "-1em");
+	ok( jQuery("#nothiddendiv").css("top"), -16, "Check negative number in EMs." );
 
 	jQuery('#floatTest').css('styleFloat', 'left');
 	equals( jQuery('#floatTest').css('styleFloat'), 'left', 'Modified CSS float using "styleFloat": Assert float is left');
@@ -76,11 +88,6 @@ test("css(String, Object)", function() {
 	});
 	jQuery('#foo').css('opacity', '');
 	equals( jQuery('#foo').css('opacity'), '1', "Assert opacity is 1 when set to an empty String" );
-	// for #1438, IE throws JS error when filter exists but doesn't have opacity in it
-	if (jQuery.browser.msie) {
-		jQuery('#foo').css("filter", "progid:DXImageTransform.Microsoft.Chroma(color='red');");
-	}
-	equals( jQuery('#foo').css('opacity'), '1', "Assert opacity is 1 when a different filter is set in IE, #1438" );
 
 	// using contents will get comments regular, text, and comment nodes
 	var j = jQuery("#nonnodes").contents();
@@ -91,6 +98,22 @@ test("css(String, Object)", function() {
 	jQuery("#t2037")[0].innerHTML = jQuery("#t2037")[0].innerHTML
 	equals( jQuery("#t2037 .hidden").css("display"), "none", "Make sure browser thinks it is hidden" );
 });
+
+if(jQuery.browser.msie) {
+  test("css(String, Object) for MSIE", function() {
+    // for #1438, IE throws JS error when filter exists but doesn't have opacity in it
+		jQuery('#foo').css("filter", "progid:DXImageTransform.Microsoft.Chroma(color='red');");
+  	equals( jQuery('#foo').css('opacity'), '1', "Assert opacity is 1 when a different filter is set in IE, #1438" );
+
+    var filterVal = "progid:DXImageTransform.Microsoft.alpha(opacity=30) progid:DXImageTransform.Microsoft.Blur(pixelradius=5)";
+    var filterVal2 = "progid:DXImageTransform.Microsoft.alpha(opacity=100) progid:DXImageTransform.Microsoft.Blur(pixelradius=5)";
+    jQuery('#foo').css("filter", filterVal);
+    equals( jQuery('#foo').css("filter"), filterVal, "css('filter', val) works" );
+    jQuery('#foo').css("opacity", 1)
+    equals( jQuery('#foo').css("filter"), filterVal2, "Setting opacity in IE doesn't clobber other filters" );
+    equals( jQuery('#foo').css("opacity"), 1, "Setting opacity in IE with other filters works" )
+  });
+}
 
 test("css(String, Function)", function() {
 	try { 

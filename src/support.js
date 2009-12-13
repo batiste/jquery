@@ -5,7 +5,7 @@
 	var root = document.documentElement,
 		script = document.createElement("script"),
 		div = document.createElement("div"),
-		id = "script" + (new Date).getTime();
+		id = "script" + now();
 
 	div.style.display = "none";
 	div.innerHTML = '   <link/><table></table><a href="/a" style="color:red;float:left;opacity:.55;">a</a><select><option>text</option></select>';
@@ -40,7 +40,8 @@
 
 		// Make sure that element opacity exists
 		// (IE uses filter instead)
-		opacity: a.style.opacity === "0.55",
+		// Use a regex to work around a WebKit issue. See #5145
+		opacity: /^0.55$/.test( a.style.opacity ),
 
 		// Verify style float existence
 		// (IE uses styleFloat instead of cssFloat)
@@ -81,6 +82,7 @@
 
 	// Figure out if the W3C box model works as expected
 	// document.body must exist before we can do this
+	// TODO: This timeout is temporary until I move ready into core.js.
 	jQuery(function(){
 		var div = document.createElement("div");
 		div.style.width = div.style.paddingLeft = "1px";
@@ -90,6 +92,26 @@
 		document.body.removeChild( div ).style.display = 'none';
 		div = null;
 	});
+
+	// Technique from Juriy Zaytsev
+	// http://thinkweb2.com/projects/prototype/detecting-event-support-without-browser-sniffing/
+	var eventSupported = function( eventName ) { 
+		var el = document.createElement("div"); 
+		eventName = "on" + eventName; 
+
+		var isSupported = (eventName in el); 
+		if ( !isSupported ) { 
+			el.setAttribute(eventName, "return;"); 
+			isSupported = typeof el[eventName] === "function"; 
+		} 
+		el = null; 
+
+		return isSupported; 
+	};
+	
+	jQuery.support.submitBubbles = eventSupported("submit");
+	jQuery.support.changeBubbles = eventSupported("change");
+	jQuery.support.focusBubbles = eventSupported("focus");
 
 	// release memory in IE
 	root = script = div = all = a = null;
